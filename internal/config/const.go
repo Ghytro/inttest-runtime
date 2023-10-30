@@ -92,7 +92,6 @@ var allHttpStatus = []HttpStatus{
 
 var allBrokerTypes = []BrokerType{
 	"redis",
-	"kafka",
 }
 
 type enumeratedConst interface {

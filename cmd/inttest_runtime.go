@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"inttest-runtime/pkg/config"
-	"inttest-runtime/pkg/errors/internalErr"
+	"inttest-runtime/internal/config"
+	"inttest-runtime/internal/errors/internalErr"
 	"log"
 
 	"github.com/pkg/errors"

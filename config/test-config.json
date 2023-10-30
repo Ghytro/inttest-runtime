@@ -1,6 +1,8 @@
 {
+    "port": "7701",
     "rest_services": [
         {
+            "id": "RestService1",
             "port": 8080,
             "handlers": {
                 "api_prefix": "/api/v1",
@@ -76,26 +78,31 @@
     "grpc_services": [
         {
             "port": 8000,
-            "protobuf": [
-                "proto-file 1 payload",
-                "proto-file 2 payload"
+            "id": "GrpcService1",
+            "rpc": [
+                {
+                    "name": "GetUser",
+                    "req_struct": "protobuf_struct",
+                    "resp_struct": "protobuf_struct",
+                    "behavior": [
+                        {
+                            "param": {
+                                "protobuf-object": "json-serialized"
+                            },
+                            "response": {
+                                "protobuf-object": "json-serialized"
+                            }
+                        }
+                    ]
+                }
             ]
         }
     ],
     "brokers": [
         {
             "type": "redis",
+            "id": "MyRedisBroker",
             "port": 6379,
-            "topics": [
-                {
-                    "name": "mytopic",
-                    "behavior": "def imitate_mytopic(prev_msg: Message) -> str:\n\treturn 'python code that executes after every message is sent into broker (prev message is null if we gonna send first message)')"
-                }
-            ]
-        },
-        {
-            "type": "kafka",
-            "port": 9092,
             "topics": [
                 {
                     "name": "mytopic",

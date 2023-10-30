@@ -37,8 +37,11 @@ var _ interface {
 	validator
 } = (*Port)(nil)
 
+type ServiceID string
+
 type RestService struct {
 	Port
+	ID       ServiceID     `json:"id"`
 	Handlers []RestHandler `json:"handlers"`
 }
 
@@ -71,13 +74,29 @@ type RestHandlerResponse struct {
 
 type GrpcService struct {
 	Port
-	Protobuf []PbPayload `json:"protobuf"`
+	ID              ServiceID `json:"id"`
+	GrpcVersion     string    `json:"grpc_version"`
+	ProtobufVersion string    `json:"protobuf_version"`
+	Rpc             []Grpc    `json:"rpc"`
 }
 
-type PbPayload string
+type Grpc struct {
+	Name       string        `json:"name"`
+	ReqStruct  string        `json:"req_struct"`
+	RespStruct string        `json:"resp_struct"`
+	Behavior   GrpcBehaviors `json:"behavior"`
+}
+
+type GrpcBehaviors []GrpcBehavior
+
+type GrpcBehavior struct {
+	Param    any `json:"param"`
+	Response any `json:"response"`
+}
 
 type Broker struct {
 	Port
+	ID     ServiceID     `json:"id"`
 	Type   BrokerType    `json:"type"`
 	Topics []BrokerTopic `json:"topics"`
 }
