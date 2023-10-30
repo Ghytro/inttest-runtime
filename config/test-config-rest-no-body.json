@@ -45,31 +45,6 @@
                                 }
                             }
                         ]
-                    },
-                    {
-                        "route": "/users/{id}",
-                        "method": "PATCH",
-                        "payload": "{\"nickname\": \"{nick}\"}",
-                        "behavior": [
-                            {
-                                "parameters": {
-                                    "nick": "Michael"
-                                },
-                                "response": {
-                                    "status": 200,
-                                    "payload": "{\"status\": \"OK\"}"
-                                }
-                            },
-                            {
-                                "parameters": {
-
-                                },
-                                "response": {
-                                    "status": 400,
-                                    "payload": "{\"code\": \"0x0002\", \"msg\": \"you can rename only to Michael\", \"reason\": \"bad_request\", \"location\": \"error while updating user\"}"
-                                }
-                            }
-                        ]
                     }
                 ]
             }

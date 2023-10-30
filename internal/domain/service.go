@@ -59,25 +59,15 @@ const (
 	RpcTypeGrpc    RpcType = "grpc"
 )
 
-type ServiceUptimeStatus int
+type ServiceUptimeStatus string
 
 func (s ServiceUptimeStatus) String() string {
-	if s < 0 || int(s) >= len(serviceStatusStrings) {
-		return ""
-	}
-	return serviceStatusStrings[s]
+	return string(s)
 }
 
 const (
-	ServiceUptimeStatus_DOWN ServiceUptimeStatus = iota
-	ServiceUptimeStatus_UP
-	ServiceUptimeStatus_STARTING
-	ServiceUptimeStatus_SHUTTING
+	ServiceUptimeStatus_DOWN     ServiceUptimeStatus = "Down"
+	ServiceUptimeStatus_UP       ServiceUptimeStatus = "Up"
+	ServiceUptimeStatus_STARTING ServiceUptimeStatus = "Starting"
+	ServiceUptimeStatus_SHUTTING ServiceUptimeStatus = "Shutting"
 )
-
-var serviceStatusStrings = [...]string{
-	ServiceUptimeStatus_DOWN:     "Down",
-	ServiceUptimeStatus_UP:       "Up",
-	ServiceUptimeStatus_STARTING: "Starting",
-	ServiceUptimeStatus_SHUTTING: "Shutting",
-}

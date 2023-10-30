@@ -42,8 +42,8 @@ type ServiceID string
 
 type RestService struct {
 	Port
-	ID       ServiceID     `json:"id"`
-	Handlers []RestHandler `json:"handlers"`
+	ID       ServiceID   `json:"id"`
+	Handlers RestHandler `json:"handlers"`
 }
 
 type RestHandler struct {

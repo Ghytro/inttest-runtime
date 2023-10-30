@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 
+	"github.com/samber/lo"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -17,14 +18,18 @@ func NewBoundedWorker(maxWorkers int) *BoundedWorker {
 }
 
 func (w *BoundedWorker) RunAsync(ctx context.Context, fn func()) error {
-	if err := w.acquire(ctx); err != nil {
-		return err
-	}
+	errs := make(chan error, 1)
 	go func() {
+		if err := w.acquire(ctx); err != nil {
+			errs <- err
+			return
+		}
+		close(errs)
 		fn()
 		w.release()
 	}()
-	return nil
+	err, ok := <-errs
+	return lo.Ternary(ok, err, nil)
 }
 
 func (w *BoundedWorker) Run(ctx context.Context, fn func()) error {
