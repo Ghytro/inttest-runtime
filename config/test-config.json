@@ -1,0 +1,107 @@
+{
+    "rest_services": [
+        {
+            "port": 8080,
+            "handlers": {
+                "api_prefix": "/api/v1",
+                "routes": [
+                    {
+                        "route": "/users/{id}?fetchExtra={fetchExtra}",
+                        "method": "GET",
+                        "headers": {
+                            "Content-Type": "{contentType}",
+                            "X-Access-Token": "{accessToken}",
+                            "User-Header": "{userHeader}"
+                        },
+                        "behavior": [
+                            {
+                                "parameters": {
+                                    "id": "1",
+                                    "fetchExtra": "false",
+                                    "contentType": "application/json",
+                                    "userHeader": null
+                                },
+                                "response": {
+                                    "status": 200,
+                                    "headers": {
+                                        "Content-Type": "application/json",
+                                        "X-Session-Id": "999999"
+                                    },
+                                    "payload": "{\"id\": 1, \"nickname\": \"Ghytro\"}"
+                                }
+                            },
+                            {
+                                "parameters": {
+                                    "contentType": "application/myformat"
+                                },
+                                "response": {
+                                    "status": 400,
+                                    "headers": {
+                                        "Content-Type": "application/json"
+                                    },
+                                    "payload": "{\"code\": \"0x0001\", \"msg\": \"this is rest api. accepts only jsons\", \"reason\": \"bad_request\", \"location\": \"error getting user info\"}"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "route": "/users/{id}",
+                        "method": "PATCH",
+                        "payload": "{\"nickname\": \"{nick}\"}",
+                        "behavior": [
+                            {
+                                "parameters": {
+                                    "nick": "Michael"
+                                },
+                                "response": {
+                                    "status": 200,
+                                    "payload": "{\"status\": \"OK\"}"
+                                }
+                            },
+                            {
+                                "parameters": {
+
+                                },
+                                "response": {
+                                    "status": 400,
+                                    "payload": "{\"code\": \"0x0002\", \"msg\": \"you can rename only to Michael\", \"reason\": \"bad_request\", \"location\": \"error while updating user\"}"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ],
+    "grpc_services": [
+        {
+            "port": 8000,
+            "protobuf": [
+                "proto-file 1 payload",
+                "proto-file 2 payload"
+            ]
+        }
+    ],
+    "brokers": [
+        {
+            "type": "redis",
+            "port": 6379,
+            "topics": [
+                {
+                    "name": "mytopic",
+                    "behavior": "def imitate_mytopic(prev_msg: Message) -> str:\n\treturn 'python code that executes after every message is sent into broker (prev message is null if we gonna send first message)')"
+                }
+            ]
+        },
+        {
+            "type": "kafka",
+            "port": 9092,
+            "topics": [
+                {
+                    "name": "mytopic",
+                    "behavior": "def imitate_mytopic(prev_msg: Message) -> str:\n\treturn 'python code that executes after every message is sent into broker (prev message is null if we gonna send first message)')"
+                }
+            ]
+        }
+    ]
+}
