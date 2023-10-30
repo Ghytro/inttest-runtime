@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	Port
 	RestServices []RestService `json:"rest_services"`
 	GrpcServices []GrpcService `json:"grpc_services"`
 	Brokers      []Broker      `json:"brokers"`

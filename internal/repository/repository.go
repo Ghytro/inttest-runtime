@@ -27,3 +27,7 @@ func (r *Repository) WithLock(fn func(r IRepository) error) error {
 type IRepository interface {
 	service_repo.IServiceRepository
 }
+
+type Transactioner interface {
+	WithLock(fn func(r IRepository) error) error
+}

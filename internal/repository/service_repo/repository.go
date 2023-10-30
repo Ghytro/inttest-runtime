@@ -2,8 +2,10 @@ package service_repo
 
 import (
 	"context"
+	"errors"
 	"inttest-runtime/internal/domain"
 	"log/slog"
+	"time"
 )
 
 type ServiceRepository struct {
@@ -19,6 +21,12 @@ func NewServiceRepository() *ServiceRepository {
 }
 
 func (r *ServiceRepository) CreateRpcService(ctx context.Context, service *domain.RpcService) error {
+	service.CreatedAt = time.Now()
+	service.UpdatedAt = nil
+	service.DeletedAt = nil
+	if service.ID.IsEmpty() {
+		return errors.New("trying to create service with empty id")
+	}
 	return r.reg.WithLock(func(r *ServiceRegistry) error {
 		return r.Register(service)
 	})
