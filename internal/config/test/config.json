@@ -1,0 +1,86 @@
+{
+    "port": 7701,
+    "rpc_services": [
+        {
+            "type": "rest",
+            "id": "RestService1",
+            "port": 8080,
+            "api_prefix": "/api/v1",
+            "routes": [
+                {
+                    "route": "/users/:id",
+                    "method": "GET",
+                    "headers": [
+                        "Content-Type",
+                        "X-Access-Token",
+                        "User-Header"
+                    ],
+                    "behavior": [
+                        {
+                            "type": "stub",
+                            "parameters": {
+                                "headers": {
+                                    "Content-Type": "application/json",
+                                    "User-Header": "some-value"
+                                },
+                                "query": {
+                                    "fetchExtra": "false"
+                                },
+                                "body": {
+                                    "valid_json_object": "true"
+                                },
+                                "url": {
+                                    "id": "1"
+                                }
+                            },
+                            "response": {
+                                "status": 200,
+                                "headers": {
+                                    "Content-Type": "application/json",
+                                    "X-Session-Id": "999999"
+                                },
+                                "payload": {
+                                    "valid_json_object": "true"
+                                }
+                            }
+                        },
+                        {
+                            "type": "mock",
+                            "impl": [
+                                "def RestService1UsersIdGet(url_params: dict[str, str], headers: dict[str, str]) -> dict[str, any]:",
+                                "\treturn {\"my_response\": true}"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "brokers": [
+        {
+            "id": "MyRedisPubSub",
+            "type": "redis-pubsub",
+            "port": 6379,
+            "behavior": [
+                {
+                    "topic": "my_topic",
+                    "generators": [
+                        {
+                            "interval": "500ms",
+                            "type": "constant",
+                            "payload": "{\"my_message: \"is_here\"\"}"
+                        },
+                        {
+                            "interval": "500ms",
+                            "type": "programmable",
+                            "behavior": [
+                                "def generator():",
+                                "\treturn \"something\""
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

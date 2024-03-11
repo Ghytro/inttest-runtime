@@ -1,4 +1,4 @@
-package services
+package service_monitoring
 
 import (
 	"inttest-runtime/internal/api"

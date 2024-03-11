@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"inttest-runtime/internal/domain"
-	"inttest-runtime/internal/useCase/services"
+	"inttest-runtime/internal/usecase/services"
 )
 
 type UseCase interface {

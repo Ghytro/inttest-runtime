@@ -7,7 +7,7 @@ import (
 	"inttest-runtime/internal/domain"
 	"inttest-runtime/internal/errors/internalErr"
 	"inttest-runtime/internal/repository"
-	"inttest-runtime/internal/useCase/services/configparser"
+	"inttest-runtime/internal/usecase/services/configparser"
 	"inttest-runtime/pkg/utils"
 	"inttest-runtime/pkg/worker"
 
@@ -98,7 +98,7 @@ func (s *Service) InitEnv(ctx context.Context, config *config.Config, initConf S
 }
 
 type rpcServiceConstraint interface {
-	config.RestService | config.GrpcService
+	config.RpcService | config.GrpcService
 }
 
 func createServicesInRepo[T rpcServiceConstraint](
@@ -108,8 +108,8 @@ func createServicesInRepo[T rpcServiceConstraint](
 ) error {
 	// fixme: проект только начался а уже говнокодим
 	switch utils.TypeInstAny[T]().(type) {
-	case config.RestService:
-		services := utils.SliceTypeAssert[config.RestService](services)
+	case config.RpcService:
+		services := utils.SliceTypeAssert[config.RpcService](services)
 		for _, s := range services {
 			if err := repo.CreateRpcService(ctx, &domain.RpcService{
 				ID:            domain.ServiceID(s.ID),

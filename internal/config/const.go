@@ -1,9 +1,7 @@
 package config
 
 import (
-	"fmt"
 	"net/http"
-	"slices"
 )
 
 // preallocated slices with constants
@@ -90,45 +88,40 @@ var allHttpStatus = []HttpStatus{
 	http.StatusNetworkAuthenticationRequired,
 }
 
+const (
+	BrokerType_REDIS_PUBSUB BrokerType = "redis-pubsub"
+)
+
 var allBrokerTypes = []BrokerType{
-	"redis",
+	BrokerType_REDIS_PUBSUB,
 }
 
-type enumeratedConst interface {
-	HttpMethod | HttpStatus | BrokerType
+const (
+	RedisTopicGeneratorType_CONST RedisTopicGeneratorType = "constant"
+	RedisTopicGeneratorType_PROG  RedisTopicGeneratorType = "programmable"
+)
+
+var allRedisTopicGeneratorTypes = []RedisTopicGeneratorType{
+	RedisTopicGeneratorType_CONST,
+	RedisTopicGeneratorType_PROG,
 }
 
-func validateEnumConst[T enumeratedConst](c T) error {
-	var (
-		enumStringName string
-		collection     any
-		formattedValue string
-	)
+const (
+	RestHandlerBehaviorType_STUB RestHandlerBehaviorType = "stub"
+	RestHandlerBehaviorType_MOCK RestHandlerBehaviorType = "mock"
+)
 
-	switch t := any(c).(type) {
-	case HttpMethod:
-		enumStringName = "http method"
-		collection = allHttpMethods
-		formattedValue = fmt.Sprintf("%q", t)
+var allRestHandlerBehaviorTypes = []RestHandlerBehaviorType{
+	RestHandlerBehaviorType_STUB,
+	RestHandlerBehaviorType_MOCK,
+}
 
-	case HttpStatus:
-		enumStringName = "http status"
-		collection = allHttpStatus
-		formattedValue = fmt.Sprintf("%d", t)
+const (
+	RpcServiceType_REST RpcServiceType = "rest"
+	RpcServiceType_SOAP RpcServiceType = "soap"
+)
 
-	case BrokerType:
-		enumStringName = "broker type"
-		collection = allBrokerTypes
-		formattedValue = fmt.Sprintf("%q", t)
-	}
-
-	if !slices.Contains(collection.([]T), c) {
-		return fmt.Errorf(
-			"incorrect value for %s: %s",
-			enumStringName,
-			formattedValue,
-		)
-	}
-
-	return nil
+var allRpcServiceTypes = []RpcServiceType{
+	RpcServiceType_REST,
+	RpcServiceType_SOAP,
 }

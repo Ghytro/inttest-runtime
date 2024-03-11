@@ -1,17 +1,16 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
-	"inttest-runtime/pkg/utils"
 	"math"
+
+	"github.com/samber/lo"
 )
 
 type Config struct {
 	Port
-	RestServices []RestService `json:"rest_services"`
-	GrpcServices []GrpcService `json:"grpc_services"`
-	Brokers      []Broker      `json:"brokers"`
+	RpcServices []RpcService `json:"rpc_services"`
+	Brokers     []Broker     `json:"brokers"`
 }
 
 type Port struct {
@@ -29,241 +28,161 @@ func (p Port) Validate() error {
 	return nil
 }
 
-func (p *Port) UnmarshalJSON(data []byte) error {
-	return validatorUnmarshal(data, p)
+type RpcService struct {
+	RpcServiceCommon
+	RpcServiceUnion
 }
 
-var _ interface {
-	json.Unmarshaler
-	validator
-} = (*Port)(nil)
+type RpcServiceCommon struct {
+	Type RpcServiceType `json:"type"`
+	ID   string         `json:"id"`
+	Port
+}
 
-type ServiceID string
+type RpcServiceType string
+
+func (t RpcServiceType) Validate() error {
+	if !lo.Contains(allRpcServiceTypes, t) {
+		return fmt.Errorf("некорректное значение типа rpc-сервиса: %s", string(t))
+	}
+	return nil
+}
+
+type RpcServiceUnion struct {
+	RestService
+	SoapService
+}
 
 type RestService struct {
-	Port
-	ID       ServiceID   `json:"id"`
-	Handlers RestHandler `json:"handlers"`
+	ApiPrefix string      `json:"api_prefix"`
+	Routes    []RestRoute `json:"routes"`
 }
-
-type RestHandler struct {
-	ApiPrefix string     `json:"api_prefix"`
-	Routes    RestRoutes `json:"routes"`
-}
-
-type RestRoutes []RestRoute
 
 type RestRoute struct {
-	Route    string              `json:"route"`
-	Method   HttpMethod          `json:"method"`
-	Headers  HttpHeaders         `json:"headers"`
-	Behavior RestHandlerBehavior `json:"behavior"`
+	Route    ParametrizedRestRoute     `json:"route"`
+	Method   HttpMethod                `json:"method"`
+	Behavior []RestHandlerBehaviorItem `json:"behavior"`
 }
 
-type RestHandlerBehavior []RestHandlerBehaviorItem
+type ParametrizedRestRoute string
 
-type RestHandlerBehaviorItem struct {
-	Params   RestHandlerParams   `json:"parameters"`
-	Response RestHandlerResponse `json:"response"`
+type RestRouteParam struct {
+	Name string
+	Pos  int
 }
-
-type RestHandlerResponse struct {
-	Status  HttpStatus  `json:"status"`
-	Headers HttpHeaders `json:"headers"`
-	Payload string      `json:"payload"`
-}
-
-type GrpcService struct {
-	Port
-	ID              ServiceID `json:"id"`
-	GrpcVersion     string    `json:"grpc_version"`
-	ProtobufVersion string    `json:"protobuf_version"`
-	Rpc             []Grpc    `json:"rpc"`
-}
-
-type Grpc struct {
-	Name       string        `json:"name"`
-	ReqStruct  string        `json:"req_struct"`
-	RespStruct string        `json:"resp_struct"`
-	Behavior   GrpcBehaviors `json:"behavior"`
-}
-
-type GrpcBehaviors []GrpcBehavior
-
-type GrpcBehavior struct {
-	Param    any `json:"param"`
-	Response any `json:"response"`
-}
-
-type Broker struct {
-	Port
-	ID     ServiceID     `json:"id"`
-	Type   BrokerType    `json:"type"`
-	Topics []BrokerTopic `json:"topics"`
-}
-
-type BrokerTopic struct {
-	Name     string         `json:"name"`
-	Behavior BrokerBehavior `json:"behavior"`
-}
-
-type BrokerBehavior string
 
 type HttpMethod string
 
-func (m *HttpMethod) UnmarshalJSON(data []byte) error {
-	return validatorUnmarshal(data, m)
-}
-
 func (m HttpMethod) Validate() error {
-	return validateEnumConst(m)
+	if !lo.Contains(allHttpMethods, m) {
+		return fmt.Errorf("некорректное значение http-метода (%s)", string(m))
+	}
+	return nil
 }
 
-var _ interface {
-	json.Unmarshaler
-	validator
-} = (*HttpMethod)(nil)
+type RestHandlerBehaviorItem struct {
+	Type RestHandlerBehaviorType
+	RestHandlerBehaviorUnion
+}
+
+type RestHandlerBehaviorUnion struct {
+	StubBehavior
+	MockBehavior
+}
+
+type RestHandlerBehaviorType string
+
+func (bt RestHandlerBehaviorType) Validate() error {
+	if !lo.Contains(allRestHandlerBehaviorTypes, bt) {
+		return fmt.Errorf("некорректное значение типа поведения rest-хендлера: %s", string(bt))
+	}
+	return nil
+}
+
+type StubBehavior struct {
+	Params   StubBehaviorParams   `json:"parameters"`
+	Response StubBehaviorResponse `json:"response"`
+}
+
+type StubBehaviorParams struct {
+	Headers map[string]string `json:"headers"`
+	Query   map[string]string `json:"query"`
+	Body    map[string]any    `json:"body"`
+	Url     map[string]string `json:"url"`
+}
+
+type StubBehaviorResponse struct {
+	Status  HttpStatus        `json:"status"`
+	Headers map[string]string `json:"headers"`
+	Payload map[string]any    `json:"payload"`
+}
 
 type HttpStatus int
 
-func (s *HttpStatus) UnmarshalJSON(data []byte) error {
-	return validatorUnmarshal(data, s)
-}
-
 func (s HttpStatus) Validate() error {
-	return validateEnumConst(s)
+	if !lo.Contains(allHttpStatus, s) {
+		return fmt.Errorf("некорректное значение HTTP статуса (%d)", s)
+	}
+	return nil
 }
 
-var _ interface {
-	json.Unmarshaler
-	validator
-} = (*HttpStatus)(nil)
+type MockBehavior struct {
+	// скорее всего можно будет взять из пакета
+	// тип вроде code-snippet
+	// (или все таки отделить мух от котлет?)
+	Impl []string `json:"impl"`
+}
+
+type SoapService struct {
+	SomeField string `json:"some_field"`
+}
+
+type Broker struct {
+	ID   string     `json:"id"`
+	Type BrokerType `json:"type"`
+	Port
+	BrokerBehaviorUnion
+}
 
 type BrokerType string
 
 func (t BrokerType) Validate() error {
-	return validateEnumConst(t)
-}
-
-type validator interface {
-	Validate() error
-}
-
-func validatorUnmarshal[T validator](data []byte, receiver *T) error {
-	var temp T
-	if err := json.Unmarshal(data, &temp); err != nil {
-		return err
+	if !lo.Contains(allBrokerTypes, t) {
+		return fmt.Errorf("некорректное значение типа брокера: %s", string(t))
 	}
-	if err := temp.Validate(); err != nil {
-		return err
-	}
-	*receiver = temp
 	return nil
 }
 
-type kvStore interface {
-	Get(k string) (string, bool)
-	PGet(k string) *string
-	MustGet(k string) string
-	Contains(k string) bool
-	IsNil(k string) bool
-	Set(k, v string)
-	Unset(k string)
+type BrokerBehaviorUnion struct {
+	BrokerBehaviorRedis
 }
 
-type HttpHeaders map[string]string
-
-// Get implements kvStore.
-func (h HttpHeaders) Get(header string) (string, bool) {
-	result, ok := h[header]
-	return result, ok
+type BrokerBehaviorRedis struct {
+	Behavior []BrokerBehaviorRedisItem `json:"behavior"`
 }
 
-// PGet implements kvStore.
-func (h HttpHeaders) PGet(header string) *string {
-	result, ok := h[header]
-	if !ok {
-		return nil
-	}
-	return utils.ToPtr(result)
+type BrokerBehaviorRedisItem struct {
+	Topic      string                `json:"topic"`
+	Generators []RedisTopicGenerator `json:"generators"`
 }
 
-// MustGet implements kvStore.
-func (h HttpHeaders) MustGet(header string) string {
-	return h[header]
+type RedisTopicGenerator struct {
+	Interval string                  `json:"interval"`
+	Type     RedisTopicGeneratorType `json:"type"`
+	RedisTopicGeneratorUnion
 }
 
-// Contains implements kvStore.
-func (h HttpHeaders) Contains(header string) bool {
-	_, ok := h[header]
-	return ok
+type RedisTopicGeneratorUnion struct {
+	Const *RedisTopicGeneratorConst
+	Prog  *RedisTopicGeneratorProg
 }
 
-// IsNIl implements kvStore.
-func (h HttpHeaders) IsNil(header string) bool {
-	return false
+type RedisTopicGeneratorConst struct {
+	Payload string `json:"payload"`
 }
 
-// Set implements kvStore.
-func (h HttpHeaders) Set(header, val string) {
-	h[header] = val
+type RedisTopicGeneratorProg struct {
+	Behavior []string `json:"behavior"`
 }
 
-// Unset implements kvStore.
-func (h HttpHeaders) Unset(header string) {
-	delete(h, header)
-}
-
-var _ kvStore = (*HttpHeaders)(nil)
-
-type RestHandlerParams map[string]*string
-
-// Contains implements kvStore.
-func (p RestHandlerParams) Contains(param string) bool {
-	_, ok := p[param]
-	return ok
-}
-
-// Get implements kvStore.
-func (p RestHandlerParams) Get(param string) (string, bool) {
-	v, ok := p[param]
-	if !ok {
-		return "", false
-	}
-	return *v, true
-}
-
-// IsNil implements kvStore.
-func (p RestHandlerParams) IsNil(param string) bool {
-	v, ok := p[param]
-	if !ok {
-		return false
-	}
-	return v == nil
-}
-
-// MustGet implements kvStore.
-func (p RestHandlerParams) MustGet(param string) string {
-	v, ok := p[param]
-	if !ok {
-		return ""
-	}
-	return *v
-}
-
-// PGet implements kvStore.
-func (p RestHandlerParams) PGet(param string) *string {
-	return p[param]
-}
-
-// Set implements kvStore.
-func (p RestHandlerParams) Set(param string, v string) {
-	p[param] = utils.ToPtr(v)
-}
-
-// Unset implements kvStore.
-func (p RestHandlerParams) Unset(param string) {
-	delete(p, param)
-}
-
-var _ kvStore = (*RestHandlerParams)(nil)
+type RedisTopicGeneratorType string

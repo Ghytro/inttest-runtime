@@ -2,7 +2,7 @@ package rest
 
 import (
 	"inttest-runtime/internal/config"
-	"inttest-runtime/internal/useCase/services/configparser"
+	"inttest-runtime/internal/usecase/services/configparser"
 	"strings"
 
 	"github.com/google/uuid"
