@@ -21,7 +21,7 @@ func TestParseRestRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	routeParams := conf.RpcServices[0].RpcServiceUnion.RestService.Routes[0].Route.Params()
+	routeParams := conf.RpcServices[0].RpcServiceUnion.Routes[0].Route.Params()
 	fmt.Println(routeParams)
 }
 

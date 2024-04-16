@@ -26,9 +26,7 @@
                                 "query": {
                                     "fetchExtra": "false"
                                 },
-                                "body": {
-                                    "valid_json_object": "true"
-                                },
+                                "body": "{\"valid_json_object\": \"true\"}",
                                 "url": {
                                     "id": "1"
                                 }
@@ -39,9 +37,7 @@
                                     "Content-Type": "application/json",
                                     "X-Session-Id": "999999"
                                 },
-                                "payload": {
-                                    "valid_json_object": "true"
-                                }
+                                "body": "{\"valid_json_object\": \"true\"}"
                             }
                         },
                         {

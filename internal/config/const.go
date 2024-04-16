@@ -107,11 +107,11 @@ var allRedisTopicGeneratorTypes = []RedisTopicGeneratorType{
 }
 
 const (
-	RestHandlerBehaviorType_STUB RestHandlerBehaviorType = "stub"
-	RestHandlerBehaviorType_MOCK RestHandlerBehaviorType = "mock"
+	RestHandlerBehaviorType_STUB HttpHandlerBehaviorType = "stub"
+	RestHandlerBehaviorType_MOCK HttpHandlerBehaviorType = "mock"
 )
 
-var allRestHandlerBehaviorTypes = []RestHandlerBehaviorType{
+var allRestHandlerBehaviorTypes = []HttpHandlerBehaviorType{
 	RestHandlerBehaviorType_STUB,
 	RestHandlerBehaviorType_MOCK,
 }

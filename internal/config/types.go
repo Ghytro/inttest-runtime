@@ -49,22 +49,24 @@ func (t RpcServiceType) Validate() error {
 }
 
 type RpcServiceUnion struct {
-	RestService
-	SoapService
+	HttpService
 }
 
-type RestService struct {
-	ApiPrefix string      `json:"api_prefix"`
-	Routes    []RestRoute `json:"routes"`
+type HttpService struct {
+	Routes []HttpRoute `json:"routes"`
 }
 
-type RestRoute struct {
+type HttpRoute struct {
 	Route    ParametrizedRestRoute     `json:"route"`
 	Method   HttpMethod                `json:"method"`
-	Behavior []RestHandlerBehaviorItem `json:"behavior"`
+	Behavior []HttpHandlerBehaviorItem `json:"behavior"`
 }
 
 type ParametrizedRestRoute string
+
+func (r ParametrizedRestRoute) String() string {
+	return string(r)
+}
 
 type RestRouteParam struct {
 	Name string
@@ -80,41 +82,41 @@ func (m HttpMethod) Validate() error {
 	return nil
 }
 
-type RestHandlerBehaviorItem struct {
-	Type RestHandlerBehaviorType
-	RestHandlerBehaviorUnion
+type HttpHandlerBehaviorItem struct {
+	Type HttpHandlerBehaviorType
+	HttpHandlerBehaviorUnion
 }
 
-type RestHandlerBehaviorUnion struct {
-	StubBehavior
-	MockBehavior
+type HttpHandlerBehaviorUnion struct {
+	HttpStubBehavior
+	HttpMockBehavior
 }
 
-type RestHandlerBehaviorType string
+type HttpHandlerBehaviorType string
 
-func (bt RestHandlerBehaviorType) Validate() error {
+func (bt HttpHandlerBehaviorType) Validate() error {
 	if !lo.Contains(allRestHandlerBehaviorTypes, bt) {
 		return fmt.Errorf("некорректное значение типа поведения rest-хендлера: %s", string(bt))
 	}
 	return nil
 }
 
-type StubBehavior struct {
-	Params   StubBehaviorParams   `json:"parameters"`
-	Response StubBehaviorResponse `json:"response"`
+type HttpStubBehavior struct {
+	Params   HttpStubBehaviorParams   `json:"parameters"`
+	Response HttpStubBehaviorResponse `json:"response"`
 }
 
-type StubBehaviorParams struct {
+type HttpStubBehaviorParams struct {
 	Headers map[string]string `json:"headers"`
 	Query   map[string]string `json:"query"`
-	Body    map[string]any    `json:"body"`
+	Body    string            `json:"body"`
 	Url     map[string]string `json:"url"`
 }
 
-type StubBehaviorResponse struct {
+type HttpStubBehaviorResponse struct {
 	Status  HttpStatus        `json:"status"`
 	Headers map[string]string `json:"headers"`
-	Payload map[string]any    `json:"payload"`
+	Body    string            `json:"body"`
 }
 
 type HttpStatus int
@@ -126,15 +128,11 @@ func (s HttpStatus) Validate() error {
 	return nil
 }
 
-type MockBehavior struct {
+type HttpMockBehavior struct {
 	// скорее всего можно будет взять из пакета
 	// тип вроде code-snippet
 	// (или все таки отделить мух от котлет?)
 	Impl []string `json:"impl"`
-}
-
-type SoapService struct {
-	SomeField string `json:"some_field"`
 }
 
 type Broker struct {
