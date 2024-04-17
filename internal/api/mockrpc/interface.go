@@ -6,9 +6,20 @@ import (
 )
 
 type IRestApiService interface {
-	HandleRestRequest(ctx context.Context, urlPattern string, method string, reqParams domainTypes.HttpClientRequestParams) (response *domainTypes.HttpResp, err error)
+	HandleRestRequest(
+		ctx context.Context,
+
+		urlPattern string,
+		method string,
+		reqParams domainTypes.RestClientRequestParams,
+	) (response *domainTypes.RestLogicResponse, err error)
 }
 
 type ISoapApiService interface {
-	HandleSoapRequest(ctx context.Context, urlPattern string, method string, reqParams domainTypes.HttpClientRequestParams) (*domainTypes.HttpResp, error)
+	HandleSoapRequest(
+		ctx context.Context,
+		urlPattern string,
+		method string,
+		reqParams domainTypes.SoapClientRequestParams,
+	) (*domainTypes.SoapLogicResponse, error)
 }

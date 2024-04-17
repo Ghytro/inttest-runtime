@@ -2,17 +2,18 @@ package mockrpc
 
 import (
 	"fmt"
+	domainTypes "inttest-runtime/internal/domain/types"
+	"inttest-runtime/pkg/xmltree"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type SoapMockApi struct {
-	addr    string
-	app     *fiber.App
+	httpRpcApi
 	service ISoapApiService
 }
 
-func NewSoapMockApi(addr string, service ISoapApiService) *SoapMockApi {
+func NewSoapMockApi(service ISoapApiService) *SoapMockApi {
 	app := fiber.New()
 	app.Use(func(ctx *fiber.Ctx) error {
 		ctx.Set(fiber.HeaderContentType, fiber.MIMEApplicationXML)
@@ -20,13 +21,14 @@ func NewSoapMockApi(addr string, service ISoapApiService) *SoapMockApi {
 	})
 
 	return &SoapMockApi{
-		addr:    addr,
-		app:     app,
+		httpRpcApi: httpRpcApi{
+			app: app,
+		},
 		service: service,
 	}
 }
 
-func (api SoapMockApi) Register(route, method string) error {
+func (api *SoapMockApi) Register(route, method string) error {
 	var registrator func(route string, handlers ...fiber.Handler) fiber.Router
 	switch method {
 	case fiber.MethodGet:
@@ -41,17 +43,29 @@ func (api SoapMockApi) Register(route, method string) error {
 	return nil
 }
 
-func (api SoapMockApi) makeSoapMockHandlerImpl(route, method string) fiber.Handler {
+func (api *SoapMockApi) makeSoapMockHandlerImpl(route, method string) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		params := extractReqParams(ctx)
-		resp, err := api.service.HandleSoapRequest(ctx.Context(), route, method, params)
+		xmlBytes := ctx.Body()
+		model, err := xmltree.FromBytes(xmlBytes)
 		if err != nil {
-			return err // todo: error handler
+			return err
 		}
-
+		resp, err := api.service.HandleSoapRequest(ctx.Context(), route, method, domainTypes.SoapClientRequestParams{
+			UrlParams:   ctx.AllParams(),
+			QueryParams: ctx.Queries(),
+			Headers:     getHeaderMap(ctx),
+			Body:        model,
+		})
+		if err != nil {
+			return err
+		}
+		resultPayload, err := resp.Body.Marshal()
+		if err != nil {
+			return err
+		}
 		for header, headerVal := range resp.Headers {
 			ctx.Set(header, headerVal)
 		}
-		return ctx.Status(int(resp.Status)).SendString(resp.Body)
+		return ctx.Status(resp.StatusCode).Send(resultPayload)
 	}
 }

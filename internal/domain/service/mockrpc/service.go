@@ -2,7 +2,6 @@ package rest
 
 import (
 	"context"
-	"errors"
 
 	"inttest-runtime/internal/config"
 	domainTypes "inttest-runtime/internal/domain/types"
@@ -23,48 +22,36 @@ func (s Service) HandleRestRequest(
 
 	urlPattern string,
 	method string,
-	reqParams domainTypes.HttpClientRequestParams,
-) (response *domainTypes.HttpResp, err error) {
-	return s.handleHttpRequestImpl(ctx, config.RpcServiceType_REST, urlPattern, method, reqParams)
+	reqParams domainTypes.RestClientRequestParams,
+) (response *domainTypes.RestLogicResponse, err error) {
+	behavior, err := s.repo.GetHttpServiceBehaviorByUrlMethod(ctx, config.RpcServiceType_REST, urlPattern, method)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := domainTypes.PerformRestLogic(reqParams, behavior)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (s Service) HandleSoapRequest(
 	ctx context.Context,
 	urlPattern string,
 	method string,
-	reqParams domainTypes.HttpClientRequestParams,
-) (*domainTypes.HttpResp, error) {
-	return s.handleHttpRequestImpl(ctx, config.RpcServiceType_SOAP, urlPattern, method, reqParams)
-}
-
-func (s Service) handleHttpRequestImpl(
-	ctx context.Context,
-	rpcType config.RpcServiceType,
-	urlPattern string,
-
-	method string,
-	reqParams domainTypes.HttpClientRequestParams,
-) (*domainTypes.HttpResp, error) {
-	behavior, err := s.repo.GetHttpServiceBehaviorByUrlMethod(ctx, rpcType, urlPattern, method)
+	reqParams domainTypes.SoapClientRequestParams,
+) (*domainTypes.SoapLogicResponse, error) {
+	behavior, err := s.repo.GetHttpServiceBehaviorByUrlMethod(ctx, config.RpcServiceType_REST, urlPattern, method)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := domainTypes.PerformHttpLogicItem(
-		reqParams,
-		config.RpcServiceType_REST,
-		behavior,
-	)
+	resp, err := domainTypes.PerformSoapLogic(reqParams, behavior)
 	if err != nil {
 		return nil, err
 	}
 
-	// я хз зачем это сделал но пусть будет
-	if result.Mock != nil {
-		return result.Mock, nil
-	}
-	if result.Stub != nil {
-		return result.Stub, nil
-	}
-	return nil, errors.New("no result to return")
+	return resp, nil
 }

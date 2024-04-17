@@ -1,26 +1,31 @@
 package mockrpc
 
 import (
+	"errors"
 	"fmt"
+	domainTypes "inttest-runtime/internal/domain/types"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type RestMockApi struct {
-	addr    string
-	app     *fiber.App
+	httpRpcApi
 	service IRestApiService
 }
 
-func NewRestMockApi(addr string, service IRestApiService) *RestMockApi {
+func NewRestMockApi(service IRestApiService) *RestMockApi {
 	app := fiber.New()
 	app.Use(func(ctx *fiber.Ctx) error {
-		ctx.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+		if !strings.Contains(ctx.Get(fiber.HeaderContentType), fiber.MIMEApplicationJSON) {
+			return errors.New("REST API only accepts application/json")
+		}
 		return ctx.Next()
 	})
 	return &RestMockApi{
-		addr:    addr,
-		app:     app,
+		httpRpcApi: httpRpcApi{
+			app: app,
+		},
 		service: service,
 	}
 }
@@ -47,17 +52,25 @@ func (api *RestMockApi) Register(route, method string) error {
 	return nil
 }
 
-func (api RestMockApi) makeHttpMockHandlerImpl(urlPattern, method string) fiber.Handler {
+func (api *RestMockApi) makeHttpMockHandlerImpl(urlPattern, method string) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		params := extractReqParams(ctx)
-		resp, err := api.service.HandleRestRequest(ctx.Context(), urlPattern, method, params)
-		if err != nil {
-			return err // todo: error handler
+		// we need to pass only parsed values into business logic
+		var model any
+		if err := ctx.BodyParser(&model); err != nil {
+			return err
 		}
-
+		resp, err := api.service.HandleRestRequest(ctx.Context(), urlPattern, method, domainTypes.RestClientRequestParams{
+			UrlParams:   ctx.AllParams(),
+			QueryParams: ctx.Queries(),
+			Headers:     getHeaderMap(ctx),
+			Body:        model,
+		})
+		if err != nil {
+			return err
+		}
 		for header, headerVal := range resp.Headers {
 			ctx.Set(header, headerVal)
 		}
-		return ctx.Status(int(resp.Status)).SendString(resp.Body)
+		return ctx.Status(resp.StatusCode).JSON(resp.Body)
 	}
 }
