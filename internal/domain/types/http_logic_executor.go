@@ -86,15 +86,31 @@ func (exec *MockLogicExecutor) PerformRestLogic(
 	return nil, errors.New("behavior was not set, check correctness of config")
 }
 
+func clientParamsFitBehavior(url, query, header map[string]string, behavParams config.HttpStubBehaviorParams) bool {
+	mapIncludes := func(super, sub map[string]string) bool {
+		for kSub, vSub := range sub {
+			if vSuper, ok := super[kSub]; !ok || vSuper != vSub {
+				return false
+			}
+		}
+		return true
+	}
+
+	return mapIncludes(url, behavParams.Url) &&
+		mapIncludes(query, behavParams.Query) &&
+		mapIncludes(header, behavParams.Headers)
+}
+
 func (exec *MockLogicExecutor) restStubLogic(reqParams RestClientRequestParams, behavior config.HttpStubBehavior) (*RestLogicResponse, bool, error) {
 	// todo: зависимость доменной логики на пакет с конфигом выглядит плохо, переделать если время есть
 
 	// check if all the request parameters fit the behavior logic
-	if !maps.Equal(reqParams.Headers, behavior.Params.Headers) ||
-		!maps.Equal(reqParams.QueryParams, behavior.Params.Query) ||
-		!maps.Equal(reqParams.UrlParams, behavior.Params.Url) {
-		// that just means that the behavior is wrong
-		// and we need to try another one
+	if !clientParamsFitBehavior(
+		reqParams.UrlParams,
+		reqParams.QueryParams,
+		reqParams.Headers,
+		behavior.Params,
+	) {
 		return nil, false, nil
 	}
 
@@ -306,11 +322,12 @@ func (exec *MockLogicExecutor) PerformSoapLogic(reqParams SoapClientRequestParam
 
 func (exec *MockLogicExecutor) soapStubLogic(reqParams SoapClientRequestParams, behavior config.HttpStubBehavior) (*SoapLogicResponse, bool, error) {
 	// check if all the request parameters fit the behavior logic
-	if !maps.Equal(reqParams.Headers, behavior.Params.Headers) ||
-		!maps.Equal(reqParams.QueryParams, behavior.Params.Query) ||
-		!maps.Equal(reqParams.UrlParams, behavior.Params.Url) {
-		// that just means that the behavior is wrong
-		// and we need to try another one
+	if !clientParamsFitBehavior(
+		reqParams.UrlParams,
+		reqParams.QueryParams,
+		reqParams.Headers,
+		behavior.Params,
+	) {
 		return nil, false, nil
 	}
 

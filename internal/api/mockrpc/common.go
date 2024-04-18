@@ -32,10 +32,18 @@ func (api httpRpcApi) Listen(ctx context.Context, addr string) error {
 	if err != nil {
 		return err
 	}
-	if err := api.app.Listener(ln); err != nil {
-		return err
+	listenErr := make(chan error, 1)
+	go func() {
+		if err := api.app.Listener(ln); err != nil {
+			listenErr <- err
+		}
+	}()
+	select {
+	case <-ctx.Done():
+		break
+	case <-listenErr:
+		log.Fatal(err)
 	}
-	<-ctx.Done()
 	if err := ln.Close(); err != nil {
 		return err
 	}

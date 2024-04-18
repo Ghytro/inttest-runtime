@@ -172,8 +172,8 @@ type RedisTopicGenerator struct {
 }
 
 type RedisTopicGeneratorUnion struct {
-	Const *RedisTopicGeneratorConst
-	Prog  *RedisTopicGeneratorProg
+	RedisTopicGeneratorConst
+	RedisTopicGeneratorProg
 }
 
 type RedisTopicGeneratorConst struct {

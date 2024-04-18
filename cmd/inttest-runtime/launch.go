@@ -66,7 +66,7 @@ func launchServices(cmd *cobra.Command, args []string) {
 			log.Fatal(err)
 		}
 		errGroup.Go(func() error {
-			return mockApi.Listen(ctx, fmt.Sprintf(":%d", rpcService.Port))
+			return mockApi.Listen(ctx, fmt.Sprintf(":%d", rpcService.GetPort()))
 		})
 	}
 
@@ -78,7 +78,7 @@ func launchServices(cmd *cobra.Command, args []string) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			redisAddr := fmt.Sprintf(":%d", broker.Port)
+			redisAddr := fmt.Sprintf(":%d", broker.GetPort())
 			errGroup.Go(func() error {
 				return localRedis.Listen(ctx, redisAddr)
 			})
@@ -130,7 +130,7 @@ func compilePyFuncs(cfg config.Config, pyRuntime *embedded.PyRuntime) (*domainTy
 				if generator.Type != config.RedisTopicGeneratorType_PROG {
 					continue
 				}
-				if _, err := compileStore.AddFunc(generator.RedisTopicGeneratorUnion.Prog.Behavior); err != nil {
+				if _, err := compileStore.AddFunc(generator.RedisTopicGeneratorUnion.RedisTopicGeneratorProg.Behavior); err != nil {
 					return nil, err
 				}
 			}
