@@ -7,13 +7,14 @@ import (
 
 type PyPrecompiledExecutor struct {
 	execLock sync.Mutex
-	pyCtx    embedded.PyRuntime
+	pyCtx    *embedded.PyRuntime
 	funcs    map[string]*embedded.PyCallable
 }
 
-func NewPyPrecompiledExecutor(interpreter embedded.PyRuntime) *PyPrecompiledExecutor {
+func NewPyPrecompiledExecutor(interpreter *embedded.PyRuntime) *PyPrecompiledExecutor {
 	return &PyPrecompiledExecutor{
 		execLock: sync.Mutex{},
+		pyCtx:    interpreter,
 		funcs:    map[string]*embedded.PyCallable{},
 	}
 }

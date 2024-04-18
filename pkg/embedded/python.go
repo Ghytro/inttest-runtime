@@ -160,6 +160,13 @@ func (v PyValue) ToSlice() (result []any, err error) {
 	return result, nil
 }
 
+func (v PyValue) ToString() (result string, err error) {
+	if err = v.parentRuntime.GoFromObject(v.pyObj, &result); err != nil {
+		return "", err
+	}
+	return result, nil
+}
+
 func (v PyValue) ToAny() (result any, err error) {
 	if err = v.parentRuntime.GoFromObject(v.pyObj, &result); err != nil {
 		return nil, err

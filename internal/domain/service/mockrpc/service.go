@@ -8,12 +8,14 @@ import (
 )
 
 type Service struct {
-	repo Repository
+	repo          Repository
+	logicExecutor *domainTypes.MockLogicExecutor
 }
 
-func New(repo Repository) *Service {
+func New(repo Repository, exec *domainTypes.MockLogicExecutor) *Service {
 	return &Service{
-		repo: repo,
+		repo:          repo,
+		logicExecutor: exec,
 	}
 }
 
@@ -29,7 +31,7 @@ func (s Service) HandleRestRequest(
 		return nil, err
 	}
 
-	resp, err := domainTypes.PerformRestLogic(reqParams, behavior)
+	resp, err := s.logicExecutor.PerformRestLogic(reqParams, behavior)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +50,7 @@ func (s Service) HandleSoapRequest(
 		return nil, err
 	}
 
-	resp, err := domainTypes.PerformSoapLogic(reqParams, behavior)
+	resp, err := s.logicExecutor.PerformSoapLogic(reqParams, behavior)
 	if err != nil {
 		return nil, err
 	}

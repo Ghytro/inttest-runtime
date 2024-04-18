@@ -182,7 +182,7 @@ func (exec *MockLogicExecutor) restMockLogic(reqParams RestClientRequestParams, 
 
 	// construct py arguments before calling py func
 	// немного не нравится доступ до интерпретатора
-	args, err := NewRestMockFuncArgBuilder(&exec.pyExecutor.pyCtx).
+	args, err := NewRestMockFuncArgBuilder(exec.pyExecutor.pyCtx).
 		SetHeaders(reqParams.Headers).
 		SetQueryParams(reqParams.QueryParams).
 		SetUrlParams(reqParams.UrlParams).
