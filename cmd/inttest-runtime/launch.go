@@ -42,24 +42,19 @@ func launchServices(cmd *cobra.Command, args []string) {
 	})
 	for _, rpcService := range cfg.RpcServices {
 		rpcService := rpcService
+		var mockApi mockRpcApi.IMockApi
 		switch rpcService.Type {
 		case config.RpcServiceType_REST:
-			restMockApi := mockRpcApi.NewRestMockApi(httpMocksService)
-			if err := registerRpcRoutes(restMockApi, rpcService.Routes...); err != nil {
-				log.Fatal(err)
-			}
-			errGroup.Go(func() error {
-				return restMockApi.Listen(ctx, fmt.Sprintf(":%d", rpcService.Port))
-			})
+			mockApi = mockRpcApi.NewRestMockApi(httpMocksService)
 		case config.RpcServiceType_SOAP:
-			soapMockApi := mockRpcApi.NewSoapMockApi(httpMocksService)
-			if err := registerRpcRoutes(soapMockApi, rpcService.Routes...); err != nil {
-				log.Fatal(err)
-			}
-			errGroup.Go(func() error {
-				return soapMockApi.Listen(ctx, fmt.Sprintf(":%d", rpcService.Port))
-			})
+			mockApi = mockRpcApi.NewSoapMockApi(httpMocksService)
 		}
+		if err := registerRpcRoutes(mockApi, rpcService.RpcServiceUnion.HttpService.Routes...); err != nil {
+			log.Fatal(err)
+		}
+		errGroup.Go(func() error {
+			return mockApi.Listen(ctx, fmt.Sprintf(":%d", rpcService.Port))
+		})
 	}
 
 	if err := errGroup.Wait(); err != nil {
@@ -67,7 +62,7 @@ func launchServices(cmd *cobra.Command, args []string) {
 	}
 }
 
-func registerRpcRoutes(api mockRpcApi.HandlerRegistrator, routes ...config.HttpRoute) error {
+func registerRpcRoutes(api mockRpcApi.IMockApi, routes ...config.HttpRoute) error {
 	for _, r := range routes {
 		if err := api.Register(r.Route.String(), string(r.Method)); err != nil {
 			return err

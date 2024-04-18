@@ -42,6 +42,7 @@ func (api httpRpcApi) Listen(ctx context.Context, addr string) error {
 	return ctx.Err()
 }
 
-type HandlerRegistrator interface {
+type IMockApi interface {
 	Register(route, method string) error
+	Listen(ctx context.Context, addr string) error
 }

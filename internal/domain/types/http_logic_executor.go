@@ -198,9 +198,36 @@ func PerformSoapLogic(reqParams SoapClientRequestParams, behavior []config.HttpH
 }
 
 func soapStubLogic(reqParams SoapClientRequestParams, behavior config.HttpStubBehavior) (*SoapLogicResponse, bool, error) {
-	return nil, false, errors.New("not implemented")
+	// check if all the request parameters fit the behavior logic
+	if !maps.Equal(reqParams.Headers, behavior.Params.Headers) ||
+		!maps.Equal(reqParams.QueryParams, behavior.Params.Query) ||
+		!maps.Equal(reqParams.UrlParams, behavior.Params.Url) {
+		// that just means that the behavior is wrong
+		// and we need to try another one
+		return nil, false, nil
+	}
+
+	// check if body fits the behavior
+	behavReqBody, err := xmltree.FromBytes(utils.S2B(behavior.Params.Body))
+	if err != nil {
+		return nil, false, err
+	}
+	if !reqParams.Body.Equal(behavReqBody) {
+		return nil, false, nil
+	}
+
+	// if the body fits serialize response
+	behavRespBody, err := xmltree.FromBytes(utils.S2B(behavior.Response.Body))
+	if err != nil {
+		return nil, false, err
+	}
+	return &SoapLogicResponse{
+		StatusCode: int(behavior.Response.Status),
+		Headers:    maps.Clone(behavior.Response.Headers),
+		Body:       behavRespBody,
+	}, true, nil
 }
 
 func soapMockLogic(reqParams SoapClientRequestParams, behavior config.HttpMockBehavior) (*SoapLogicResponse, bool, error) {
-	return nil, false, errors.New("not implemented")
+	return nil, false, errors.New("python code executor must be implemented")
 }

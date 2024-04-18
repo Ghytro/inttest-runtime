@@ -1,0 +1,8 @@
+.hypothesis
+.python-version
+
+examples/hello
+examples/info
+
+test/ext.h
+test/ext.so
