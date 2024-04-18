@@ -5,12 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"inttest-runtime/internal/config"
+	"inttest-runtime/pkg/embedded"
 	"inttest-runtime/pkg/utils"
 	"inttest-runtime/pkg/xmltree"
 	"log"
 	"maps"
 	"reflect"
+
+	"github.com/samber/lo"
 )
+
+type MockLogicExecutor struct {
+	pyExecutor *PyPrecompiledExecutor
+}
+
+func NewMockLogicExecutor(exec *PyPrecompiledExecutor) *MockLogicExecutor {
+	return &MockLogicExecutor{
+		pyExecutor: exec,
+	}
+}
 
 type RestClientRequestParams struct {
 	UrlParams   map[string]string
@@ -38,7 +51,7 @@ type SoapLogicResponse struct {
 	Body       *xmltree.Node
 }
 
-func PerformRestLogic(
+func (exec *MockLogicExecutor) PerformRestLogic(
 	clientReqParams RestClientRequestParams,
 	prioritisedBehaviors []config.HttpHandlerBehaviorItem,
 ) (*RestLogicResponse, error) {
@@ -46,7 +59,7 @@ func PerformRestLogic(
 	for _, b := range prioritisedBehaviors {
 		switch b.Type {
 		case config.RestHandlerBehaviorType_STUB:
-			resp, performed, err := restStubLogic(clientReqParams, b.HttpHandlerBehaviorUnion.HttpStubBehavior)
+			resp, performed, err := exec.restStubLogic(clientReqParams, b.HttpHandlerBehaviorUnion.HttpStubBehavior)
 			if err != nil {
 				return nil, err
 			}
@@ -56,7 +69,7 @@ func PerformRestLogic(
 			return resp, nil
 
 		case config.RestHandlerBehaviorType_MOCK:
-			resp, performed, err := restMockLogic(clientReqParams, b.HttpHandlerBehaviorUnion.HttpMockBehavior)
+			resp, performed, err := exec.restMockLogic(clientReqParams, b.HttpHandlerBehaviorUnion.HttpMockBehavior)
 			if err != nil {
 				return nil, err
 			}
@@ -73,7 +86,7 @@ func PerformRestLogic(
 	return nil, errors.New("behavior was not set, check correctness of config")
 }
 
-func restStubLogic(reqParams RestClientRequestParams, behavior config.HttpStubBehavior) (*RestLogicResponse, bool, error) {
+func (exec *MockLogicExecutor) restStubLogic(reqParams RestClientRequestParams, behavior config.HttpStubBehavior) (*RestLogicResponse, bool, error) {
 	// todo: зависимость доменной логики на пакет с конфигом выглядит плохо, переделать если время есть
 
 	// check if all the request parameters fit the behavior logic
@@ -164,17 +177,111 @@ func restStubLogic(reqParams RestClientRequestParams, behavior config.HttpStubBe
 	return nil, false, nil
 }
 
-func restMockLogic(reqParams RestClientRequestParams, behavior config.HttpMockBehavior) (*RestLogicResponse, bool, error) {
+func (exec *MockLogicExecutor) restMockLogic(reqParams RestClientRequestParams, behavior config.HttpMockBehavior) (*RestLogicResponse, bool, error) {
 	// todo: зависимость доменной логики на пакет с конфигом выглядит плохо, переделать если время есть
-	return nil, false, errors.New("python code executor not implemented")
+
+	// construct py arguments before calling py func
+	// немного не нравится доступ до интерпретатора
+	args, err := NewRestMockFuncArgBuilder(&exec.pyExecutor.pyCtx).
+		SetHeaders(reqParams.Headers).
+		SetQueryParams(reqParams.QueryParams).
+		SetUrlParams(reqParams.UrlParams).
+		SetBody(reqParams.Body).
+		Build()
+
+	if err != nil {
+		return nil, false, err
+	}
+
+	result, err := exec.pyExecutor.ExecFunc(behavior.Impl, args...)
+	if err != nil {
+		return nil, false, err
+	}
+	if result.IsNone() {
+		return nil, false, nil
+	}
+
+	var jsonRes any
+	if mapRes, err := result.ToMap(); err == nil {
+		var ok bool
+		jsonRes, ok = goPyDict(mapRes).toJsonDict()
+		if !ok {
+			return nil, false, errors.New("python error: result dict is not json serializeable")
+		}
+	}
+	if sliceRes, err := result.ToSlice(); err == nil {
+		jsonResSlice := make([]any, 0, len(sliceRes))
+		for _, item := range sliceRes {
+			item := item
+			if mapItem, ok := item.(map[any]any); ok {
+				item, ok = goPyDict(mapItem).toJsonDict()
+				if !ok {
+					return nil, false, errors.New("python error: result dict is not json serializeable")
+				}
+			}
+			jsonResSlice = append(jsonResSlice, item)
+		}
+		jsonRes = jsonResSlice
+	}
+	if primitiveRes, err := result.ToAny(); err == nil {
+		jsonRes = primitiveRes
+	}
+
+	return &RestLogicResponse{
+		StatusCode: 200, // todo
+		Headers:    nil, // todo
+		Body:       jsonRes,
+	}, true, nil
 }
 
-func PerformSoapLogic(reqParams SoapClientRequestParams, behavior []config.HttpHandlerBehaviorItem) (*SoapLogicResponse, error) {
+type goPyDict map[any]any
+
+func (d goPyDict) toJsonDict() (map[string]any, bool) {
+	toStrMapIfTypeMatch := func(v any) (result any, ok bool) {
+		if vMap, ok := v.(map[any]any); ok {
+			result, ok = goPyDict(vMap).toJsonDict()
+			if !ok {
+				return nil, false
+			}
+			return result, true
+		}
+		return v, true
+	}
+
+	result := make(map[string]any, len(d))
+	for k, v := range d {
+		kStr, ok := k.(string)
+		if !ok {
+			return nil, false
+		}
+		var newVal any = v
+		newVal, ok = toStrMapIfTypeMatch(v)
+		if !ok {
+			return nil, false
+		}
+		if vSlice, ok := v.([]any); ok {
+			newSlice := make([]any, 0, len(vSlice))
+			for _, item := range vSlice {
+				newItem, ok := toStrMapIfTypeMatch(item)
+				if !ok {
+					return nil, false
+				}
+				newSlice = append(newSlice, newItem)
+			}
+			newVal = newSlice
+		}
+
+		result[kStr] = newVal
+	}
+	return result, true
+}
+
+func (exec *MockLogicExecutor) PerformSoapLogic(reqParams SoapClientRequestParams, behavior []config.HttpHandlerBehaviorItem) (*SoapLogicResponse, error) {
 	// todo: зависимость доменной логики на пакет с конфигом выглядит плохо, переделать если время есть
 	for _, b := range behavior {
 		switch b.Type {
 		case config.RestHandlerBehaviorType_STUB:
-			resp, performed, err := soapStubLogic(reqParams, b.HttpHandlerBehaviorUnion.HttpStubBehavior)
+			resp, performed, err := exec.soapStubLogic(reqParams, b.HttpHandlerBehaviorUnion.HttpStubBehavior)
 			if err != nil {
 				return nil, err
 			}
@@ -183,7 +290,7 @@ func PerformSoapLogic(reqParams SoapClientRequestParams, behavior []config.HttpH
 			}
 			return resp, nil
 		case config.RestHandlerBehaviorType_MOCK:
-			resp, performed, err := soapMockLogic(reqParams, b.HttpHandlerBehaviorUnion.HttpMockBehavior)
+			resp, performed, err := exec.soapMockLogic(reqParams, b.HttpHandlerBehaviorUnion.HttpMockBehavior)
 			if err != nil {
 				return nil, err
 			}
@@ -197,7 +304,7 @@ func PerformSoapLogic(reqParams SoapClientRequestParams, behavior []config.HttpH
 	return nil, errors.New("no response")
 }
 
-func soapStubLogic(reqParams SoapClientRequestParams, behavior config.HttpStubBehavior) (*SoapLogicResponse, bool, error) {
+func (exec *MockLogicExecutor) soapStubLogic(reqParams SoapClientRequestParams, behavior config.HttpStubBehavior) (*SoapLogicResponse, bool, error) {
 	// check if all the request parameters fit the behavior logic
 	if !maps.Equal(reqParams.Headers, behavior.Params.Headers) ||
 		!maps.Equal(reqParams.QueryParams, behavior.Params.Query) ||
@@ -228,6 +335,77 @@ func soapStubLogic(reqParams SoapClientRequestParams, behavior config.HttpStubBe
 	}, true, nil
 }
 
-func soapMockLogic(reqParams SoapClientRequestParams, behavior config.HttpMockBehavior) (*SoapLogicResponse, bool, error) {
+func (exec *MockLogicExecutor) soapMockLogic(reqParams SoapClientRequestParams, behavior config.HttpMockBehavior) (*SoapLogicResponse, bool, error) {
 	return nil, false, errors.New("python code executor must be implemented")
+}
+
+type RestMockFuncArgBuilder struct {
+	pyCtx       *embedded.PyRuntime
+	urlParams   map[any]any
+	headers     map[any]any
+	queryParams map[any]any
+	body        any
+}
+
+func NewRestMockFuncArgBuilder(interpreter *embedded.PyRuntime) *RestMockFuncArgBuilder {
+	return &RestMockFuncArgBuilder{
+		pyCtx: interpreter,
+	}
+}
+
+func (b *RestMockFuncArgBuilder) SetUrlParams(params map[string]string) *RestMockFuncArgBuilder {
+	b.urlParams = lo.MapEntries(params, func(k string, v string) (any, any) { return k, v })
+	return b
+}
+
+func (b *RestMockFuncArgBuilder) SetHeaders(headers map[string]string) *RestMockFuncArgBuilder {
+	b.headers = lo.MapEntries(headers, func(k string, v string) (any, any) { return k, v })
+	return b
+}
+
+func (b *RestMockFuncArgBuilder) SetQueryParams(params map[string]string) *RestMockFuncArgBuilder {
+	b.queryParams = lo.MapEntries(params, func(k string, v string) (any, any) { return k, v })
+	return b
+}
+
+func (b *RestMockFuncArgBuilder) SetBody(body any) *RestMockFuncArgBuilder {
+	b.body = body
+	return b
+}
+
+func (b *RestMockFuncArgBuilder) Build() (result []embedded.PyValue, err error) {
+	headers, err := b.pyCtx.NewDict(b.headers)
+	if err != nil {
+		return nil, err
+	}
+	result = append(result, headers)
+
+	query, err := b.pyCtx.NewDict(b.queryParams)
+	if err != nil {
+		return nil, err
+	}
+	result = append(result, query)
+
+	urlParams, err := b.pyCtx.NewDict(b.urlParams)
+	if err != nil {
+		return nil, err
+	}
+	result = append(result, urlParams)
+
+	var body embedded.PyValue
+	switch t := b.body.(type) {
+	case []any:
+		body, err = b.pyCtx.NewList(t)
+	case map[string]any:
+		body, err = b.pyCtx.NewDict(lo.MapKeys(t, func(_ any, k string) any { return k }))
+	default:
+		body, err = b.pyCtx.NewPrimitive(t)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return []embedded.PyValue{
+		urlParams, query, headers, body,
+	}, nil
 }

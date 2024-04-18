@@ -56,13 +56,36 @@ func (r *PyRuntime) NewCallable(impl CodeSnippet) (*PyCallable, error) {
 }
 
 func (r *PyRuntime) NewDict(m map[any]any) (PyValue, error) {
-	obj, err := r.pyCtx.GoToObject(m)
-	if err != nil {
-		return PyValue{}, err
+	if m == nil {
+		m = map[any]any{}
+	}
+	return r.pyObjConstructorImpl(m)
+}
+
+func (r *PyRuntime) NewList(l []any) (PyValue, error) {
+	if l == nil {
+		l = []any{}
+	}
+	return r.pyObjConstructorImpl(l)
+}
+
+func (r *PyRuntime) NewPrimitive(v any) (PyValue, error) {
+	return r.pyObjConstructorImpl(v)
+}
+
+func (r *PyRuntime) pyObjConstructorImpl(obj any) (result PyValue, err error) {
+	var pyObj py.Object
+	if obj == nil {
+		pyObj = py.None
+	} else {
+		pyObj, err = r.pyCtx.GoToObject(obj)
+		if err != nil {
+			return PyValue{}, err
+		}
 	}
 	return PyValue{
 		parentRuntime: &r.pyCtx,
-		pyObj:         obj,
+		pyObj:         pyObj,
 	}, nil
 }
 
@@ -82,10 +105,12 @@ func (c PyCallable) Call(args ...PyValue) (PyValue, error) {
 	if err != nil {
 		return PyValue{}, err
 	}
+	defer c.parentRuntime.DecRef(globalsDict)
 	localsDict, err := c.parentRuntime.Dict_New()
 	if err != nil {
 		return PyValue{}, err
 	}
+	defer c.parentRuntime.DecRef(localsDict)
 	if _, err := c.parentRuntime.Eval_EvalCode(c.pyObj, globalsDict, localsDict); err != nil {
 		return PyValue{}, err
 	}
@@ -126,4 +151,22 @@ func (v PyValue) ToMap() (result map[any]any, err error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func (v PyValue) ToSlice() (result []any, err error) {
+	if err = v.parentRuntime.GoFromObject(v.pyObj, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (v PyValue) ToAny() (result any, err error) {
+	if err = v.parentRuntime.GoFromObject(v.pyObj, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (v PyValue) Decref() {
+	v.parentRuntime.DecRef(v.pyObj)
 }
