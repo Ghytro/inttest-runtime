@@ -64,7 +64,7 @@
                         {
                             "interval": "500ms",
                             "type": "constant",
-                            "payload": "{\"my_message: \"is_here\"\"}"
+                            "payload": "{\"my_message: \"is_here\"}"
                         },
                         {
                             "interval": "500ms",

@@ -24,6 +24,7 @@ func ConnectRedisPubSub(addr string, db int, password string) (*RedisPubSub, err
 }
 
 func (pubSub RedisPubSub) Publish(ctx context.Context, topic string, message []byte) error {
+	log.Printf("published message %s to topic %s\n", utils.B2S(message), topic)
 	return pubSub.client.Publish(ctx, topic, message).Err()
 }
 

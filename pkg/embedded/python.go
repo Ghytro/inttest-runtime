@@ -38,8 +38,11 @@ func (r *PyRuntime) NewCallable(impl CodeSnippet) (*PyCallable, error) {
 	opParentheseIdx := strings.Index(defLine, "(")
 	clParentheseIdx := strings.Index(defLine, ")")
 	funcName := defLine[4:opParentheseIdx]
-	signature := strings.Split(defLine[opParentheseIdx+1:clParentheseIdx], ",")
-	signature = lo.Map(signature, func(s string, _ int) string { return strings.Trim(s, " ") })
+	var signature []string
+	if clParentheseIdx-opParentheseIdx > 1 {
+		signature = strings.Split(defLine[opParentheseIdx+1:clParentheseIdx], ",")
+		signature = lo.Map(signature, func(s string, _ int) string { return strings.Trim(s, " ") })
+	}
 
 	fileName := uuid.New().String() + ".py"
 	callableObj, err := r.pyCtx.CompileString(impl.String(), fileName, py.File_input)

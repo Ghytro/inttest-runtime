@@ -165,7 +165,7 @@ type BrokerBehaviorRedisItem struct {
 }
 
 type RedisTopicGenerator struct {
-	Interval        string                  `json:"interval"`
+	Interval        StrTimeInterval         `json:"interval"`
 	SendImmediately bool                    `json:"send_immediately"`
 	Type            RedisTopicGeneratorType `json:"type"`
 	RedisTopicGeneratorUnion
@@ -185,3 +185,5 @@ type RedisTopicGeneratorProg struct {
 }
 
 type RedisTopicGeneratorType string
+
+type StrTimeInterval string

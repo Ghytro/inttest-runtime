@@ -10,6 +10,7 @@ import (
 	configRepo "inttest-runtime/internal/repository/config"
 	"inttest-runtime/pkg/embedded"
 	"inttest-runtime/pkg/mq"
+	"inttest-runtime/pkg/utils"
 	"log"
 	"os"
 	"os/signal"
@@ -71,7 +72,7 @@ func launchServices(cmd *cobra.Command, args []string) {
 	}
 
 	for _, broker := range cfg.Brokers {
-		var client domainTypes.IMockBrokerPubSub
+		var brokerLogic *domainTypes.MockBroker
 		switch broker.Type {
 		case config.BrokerType_REDIS_PUBSUB:
 			localRedis, err := mq.NewLocalRedis()
@@ -82,15 +83,36 @@ func launchServices(cmd *cobra.Command, args []string) {
 			errGroup.Go(func() error {
 				return localRedis.Listen(ctx, redisAddr)
 			})
-			client, err = mq.ConnectRedisPubSub(redisAddr, 0, "")
+			client, err := mq.ConnectRedisPubSub(redisAddr, 0, "")
 			if err != nil {
 				log.Fatal(err)
 			}
+			brokerLogic = domainTypes.NewMockBroker(pyFuncExecutor, client)
+			for _, b := range broker.BrokerBehaviorUnion.BrokerBehaviorRedis.Behavior {
+				for _, g := range b.Generators {
+					switch g.Type {
+					case config.RedisTopicGeneratorType_CONST:
+						brokerLogic.AddStubRule(
+							g.Interval.ToDuration(),
+							g.SendImmediately,
+							b.Topic,
+							utils.S2B(g.RedisTopicGeneratorConst.Payload),
+						)
+					case config.RedisTopicGeneratorType_PROG:
+						brokerLogic.AddProgrammableRule(
+							g.Interval.ToDuration(),
+							g.SendImmediately,
+							b.Topic,
+							g.RedisTopicGeneratorProg.Behavior,
+						)
+					}
+				}
+			}
+
 		default:
 			log.Fatalf("unknown broker type: %s", broker.Type)
 		}
 
-		brokerLogic := domainTypes.NewMockBroker(pyFuncExecutor, client)
 		errGroup.Go(func() error {
 			return brokerLogic.Start(ctx)
 		})
