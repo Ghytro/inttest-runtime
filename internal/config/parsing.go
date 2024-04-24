@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"inttest-runtime/pkg/utils"
 	"regexp"
 	"strings"
 	"time"
@@ -12,7 +11,7 @@ import (
 
 func (r ParametrizedRestRoute) Params() []RestRouteParam {
 	rS := string(r)
-	colonPos := lo.FilterMap(utils.S2B(rS), func(c byte, i int) (int, bool) {
+	colonPos := lo.FilterMap([]byte(rS), func(c byte, i int) (int, bool) {
 		return i, c == ':'
 	})
 	return lo.Map(strings.Split(rS, ":")[1:], func(pName string, i int) RestRouteParam {
