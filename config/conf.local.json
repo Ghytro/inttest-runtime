@@ -5,7 +5,6 @@
             "type": "rest",
             "id": "RestService1",
             "port": 8080,
-            "api_prefix": "/api/v1",
             "routes": [
                 {
                     "route": "/users/:id",
