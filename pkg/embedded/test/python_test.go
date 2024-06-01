@@ -112,11 +112,11 @@ func BenchmarkCallableWithRuntimeInit(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		result, err := callable.Call(urlParamsObj, queryParamsObj, headersObj, bodyObj)
+		_, err = callable.Call(urlParamsObj, queryParamsObj, headersObj, bodyObj)
 		if err != nil {
 			b.Fatal(err)
 		}
-		fmt.Println(result.ToMap())
+		// fmt.Println(result.ToMap())
 		pyRuntime.Close()
 	}
 }
@@ -171,10 +171,10 @@ func BenchmarkCallableNoRuntimeInit(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		result, err := callable.Call(urlParamsObj, queryParamsObj, headersObj, bodyObj)
+		_, err = callable.Call(urlParamsObj, queryParamsObj, headersObj, bodyObj)
 		if err != nil {
 			b.Fatal(err)
 		}
-		fmt.Println(result.ToMap())
+		// fmt.Println(result.ToMap())
 	}
 }

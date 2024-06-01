@@ -57,33 +57,68 @@ func (exec *MockLogicExecutor) PerformRestLogic(
 ) (*RestLogicResponse, error) {
 	// todo: зависимость доменной логики на пакет с конфигом выглядит плохо, переделать если время есть
 	for _, b := range prioritisedBehaviors {
+		var (
+			resp      *RestLogicResponse
+			performed bool
+			err       error
+		)
 		switch b.Type {
 		case config.RestHandlerBehaviorType_STUB:
-			resp, performed, err := exec.restStubLogic(clientReqParams, b.HttpHandlerBehaviorUnion.HttpStubBehavior)
-			if err != nil {
-				return nil, err
-			}
-			if !performed {
-				continue
-			}
-			return resp, nil
+			resp, performed, err = exec.restStubLogic(clientReqParams, b.HttpHandlerBehaviorUnion.HttpStubBehavior)
 
 		case config.RestHandlerBehaviorType_MOCK:
-			resp, performed, err := exec.restMockLogic(clientReqParams, b.HttpHandlerBehaviorUnion.HttpMockBehavior)
-			if err != nil {
-				return nil, err
-			}
-			if !performed {
-				continue
-			}
-			return resp, nil
+			resp, performed, err = exec.restMockLogic(clientReqParams, b.HttpHandlerBehaviorUnion.HttpMockBehavior)
 
 		default:
 			return nil, fmt.Errorf("unknown behavior type: %s", b.Type)
 		}
+
+		if err != nil {
+			return nil, err
+		}
+		if !performed {
+			continue
+		}
+		resp.Body, err = toJsonSerializeable(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		return resp, nil
 	}
 
 	return nil, errors.New("behavior was not set, check correctness of config")
+}
+
+func toJsonSerializeable(v any) (any, error) {
+	switch t := v.(type) {
+	case map[any]any:
+		result := make(map[string]any, len(t))
+		for mk, mv := range t {
+			kStr, ok := mk.(string)
+			if !ok {
+				return nil, errors.New("all json keys must be strings")
+			}
+			resVal, err := toJsonSerializeable(mv)
+			if err != nil {
+				return nil, err
+			}
+			result[kStr] = resVal
+		}
+		return result, nil
+
+	case []any:
+		result := make([]any, 0, len(t))
+		for _, sv := range t {
+			resItem, err := toJsonSerializeable(sv)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, resItem)
+		}
+		return result, nil
+	}
+
+	return v, nil
 }
 
 func clientParamsFitBehavior(url, query, header map[string]string, behavParams config.HttpStubBehaviorParams) bool {

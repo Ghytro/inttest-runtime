@@ -43,7 +43,7 @@
                             "type": "mock",
                             "impl": [
                                 "def RestService1UsersIdGet(url_params, query_params, headers, body):",
-                                "\treturn {\"my_response\": true}"
+                                "\treturn {\"my_response\": True}"
                             ]
                         }
                     ]
